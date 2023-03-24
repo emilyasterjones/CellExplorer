@@ -230,7 +230,7 @@ end
 % Kilosort
 % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 if ~exist('relativePath','var')
-    kiloSortFolder = dir('Kilosort_*');
+    kiloSortFolder = dir('imec0_ks');
     % Extract only those that are directories.
     kiloSortFolder = kiloSortFolder(kiloSortFolder.isdir);
     if ~isempty(kiloSortFolder)
@@ -239,7 +239,7 @@ if ~exist('relativePath','var')
         relativePath = ''; % Relative path to the clustered data (here assumed to be the basepath)
     end
 end
-rezFile = dir(fullfile(basepath,relativePath,'rez*.mat'));
+rezFile = dir(fullfile(basepath,relativePath,'rez2.mat'));
 if ~isempty(rezFile)
     rezFile =fullfile(rezFile.folder,rezFile.name);
     session = loadKiloSortMetadata(session,rezFile);

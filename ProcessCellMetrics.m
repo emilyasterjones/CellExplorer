@@ -293,6 +293,11 @@ if ~isfield(spikes{1},'cluID')
     spikes{1}.cluID = spikes{1}.UID;
 end
 
+%%%EAJ added 3/21/2023 in case waveforms not loaded
+if ~isfield(spikes{1}, 'shankID')
+    spikes{1}.shankID = ones(1, length(spikes{1}.UID));
+end
+
 if ~isempty(parameters.restrictToIntervals)
     if size(parameters.restrictToIntervals,2) ~= 2
         error('restrictToIntervals has to be a Nx2 matrix')
@@ -845,6 +850,28 @@ if any(contains(parameters.metrics,{'monoSynaptic_connections','all'})) && ~any(
             [trans,prob,prob_uncor,pred] = ce_GetTransProb(ccg2(:,cell_metrics.putativeConnections.inhibitory(i,1),cell_metrics.putativeConnections.inhibitory(i,2)),  spikes{spkExclu}.total(cell_metrics.putativeConnections.inhibitory(i,1)),  mono_res.binSize,  0.020);
             cell_metrics.putativeConnections.inhibitoryTransProb(i) = trans;
         end
+
+        % EAJ added 3/21/2023: transmission probability binned
+        cell_metrics.putativeConnections.bins = mono_res.ccgR_bins;
+        for b = 1:length(mono_res.ccgR_binned)
+            ccg2 = mono_res.ccgR_binned{b};
+            ccg2(isnan(ccg2)) =  0;
+
+            for i = 1:size(cell_metrics.putativeConnections.excitatory,1)
+                exc_idx = cell_metrics.putativeConnections.excitatory(i,1);
+                st_bin_idx = spikes{spkExclu}.times{exc_idx}>mono_res.ccgR_bins(b) & spikes{spkExclu}.times{exc_idx}<=mono_res.ccgR_bins(b+1);
+                [trans,~,~,~] = ce_GetTransProb(ccg2(:,exc_idx,cell_metrics.putativeConnections.excitatory(i,2)),...
+                    length(spikes{spkExclu}.times{exc_idx}(st_bin_idx)),  mono_res.binSize,  0.020);
+                cell_metrics.putativeConnections.excitatoryTransProb_binned(b,i) = trans;
+            end
+            for i = 1:size(cell_metrics.putativeConnections.inhibitory,1)
+                inh_idx = cell_metrics.putativeConnections.inhibitory(i,1);
+                st_bin_idx = spikes{spkExclu}.times{inh_idx}>mono_res.ccgR_bins(b) & spikes{spkExclu}.times{inh_idx}<=mono_res.ccgR_bins(b+1);
+                [trans,~,~,~] = ce_GetTransProb(ccg2(:,inh_idx,cell_metrics.putativeConnections.inhibitory(i,2)),...
+                    length(spikes{spkExclu}.times{inh_idx}(st_bin_idx)),  mono_res.binSize,  0.020);
+                cell_metrics.putativeConnections.inhibitoryTransProb_binned(b,i) = trans;
+            end
+        end
     else
         cell_metrics.putativeConnections.excitatory = [];
         cell_metrics.putativeConnections.inhibitory = [];
@@ -1360,8 +1387,12 @@ cell_metrics.cellID =  spikes{spkExclu}.UID;
 cell_metrics.UID =  spikes{spkExclu}.UID;
 cell_metrics.cluID =  spikes{spkExclu}.cluID;
 cell_metrics.electrodeGroup = spikes{spkExclu}.shankID;
-cell_metrics.maxWaveformCh = spikes{spkExclu}.maxWaveformCh1-1;
-cell_metrics.maxWaveformCh1 = spikes{spkExclu}.maxWaveformCh1;
+if isfield(spikes{spkExclu},'maxWaveformCh1')
+    cell_metrics.maxWaveformCh = spikes{spkExclu}.maxWaveformCh1-1;
+    cell_metrics.maxWaveformCh1 = spikes{spkExclu}.maxWaveformCh1;
+else
+    disp('Waveforms not analyzed; will not be able to determine peak channel')
+end
 cell_metrics.spikeCount = spikes{spkExclu}.total;
 
 cell_metrics.general.electrodeGroups = session.extracellular.electrodeGroups.channels;
@@ -1384,7 +1415,7 @@ for j = 1:cell_metrics.general.cellCount
     try
         cell_metrics.maxWaveformChannelOrder(j) = find([session.extracellular.electrodeGroups.channels{:}] == spikes{spkExclu}.maxWaveformCh1(j));
     catch
-        warning('peak channel not determined')
+        %disp('peak channel not determined')
         cell_metrics.maxWaveformChannelOrder(j) = nan;
     end
     
@@ -1438,7 +1469,7 @@ end
 % cell_classification_putativeCellType
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-if ~isfield(cell_metrics,'putativeCellType') || ~ parameters.keepCellClassification
+if isfield(cell_metrics,'putativeCellType') || ~ parameters.keepCellClassification
     dispLog(['Cell-type classification schema: ' preferences.putativeCellType.classification_schema],basename)
     putativeCellType = celltype_classification.(preferences.putativeCellType.classification_schema)(cell_metrics,preferences);
     if all(size(putativeCellType)==[1,cell_metrics.general.cellCount]) && iscell(putativeCellType)
@@ -1493,9 +1524,11 @@ test = isfield(cell_metrics.general,field2remove);
 cell_metrics.general = rmfield(cell_metrics.general,field2remove(test));
 
 % cleaning waveforms
-field2remove = {'filt_absolute','filt_zscored', 'raw_absolute','raw_zscored','time_zscored'};
-test2 = isfield(cell_metrics.waveforms,field2remove);
-cell_metrics.waveforms = rmfield(cell_metrics.waveforms,field2remove(test2));
+if isfield(cell_metrics, 'waveforms')
+    field2remove = {'filt_absolute','filt_zscored', 'raw_absolute','raw_zscored','time_zscored'};
+    test2 = isfield(cell_metrics.waveforms,field2remove);
+    cell_metrics.waveforms = rmfield(cell_metrics.waveforms,field2remove(test2));
+end
 
 % cleaning cell_metrics.general.session & cell_metrics.general.animal
 field2remove = {'name'};
