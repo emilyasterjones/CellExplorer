@@ -30,4 +30,10 @@ prob1(prob1<0) = 0;
 
 %integrate
 trans = sum(prob1(intwin));
+
+% EAJ added 4/19/2023: deal with cases where there are >1 spikes in the
+% integration window (so probability can't exceed 1)
+if trans>1
+    trans = 1;
+end
 end

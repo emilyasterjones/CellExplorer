@@ -152,11 +152,11 @@ function mono_res = ce_MonoSynConvClick(spikes,varargin)
     ccgR(:,1:size(ccgR1,2),1:size(ccgR1,2)) = ccgR1;
 
     % EAJ added 3/21/2023: also make CCGs binned by time
-    ccgR_bins = 0:20:spiketimes(end);
+    ccgR_bins = 0:10:spiketimes(end);
     ccgR_bins = [ccgR_bins, spiketimes(end)];
     for b = 1:length(ccgR_bins)-1
-        st_binned = spiketimes(spiketimes>ccgR_bins(b) & spiketimes<=ccgR_bins(b+1));
-        [ccgR1,~] = CCG(st_binned,double(spikeIDs(:,3)),'binSize',binSize,'duration',duration,'Fs',1/sr);
+        bin_idx = spiketimes>ccgR_bins(b) & spiketimes<=ccgR_bins(b+1);
+        [ccgR1,~] = CCG(spiketimes(bin_idx),double(spikeIDs(bin_idx,3)),'binSize',binSize,'duration',duration,'Fs',1/sr);
         ccgR_temp = nan(size(ccgR1,1),nCel,nCel);
         ccgR_temp(:,1:size(ccgR1,2),1:size(ccgR1,2)) = ccgR1;
         ccgR_binned{b} = ccgR_temp;
