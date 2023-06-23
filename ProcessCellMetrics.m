@@ -778,32 +778,32 @@ end
 if any(contains(parameters.metrics,{'monoSynaptic_connections','all'})) && ~any(contains(parameters.excludeMetrics,{'monoSynaptic_connections'}))
     spkExclu = setSpkExclu('monoSynaptic_connections',parameters);
     dispLog('MonoSynaptic connections',basename)
-    if ~exist(fullfile(basepath,[basename,'.mono_res',erase(parameters.saveAs,'cell_metrics'),'.cellinfo.mat']),'file') 
+%     if ~exist(fullfile(basepath,[basename,'.mono_res',erase(parameters.saveAs,'cell_metrics'),'.cellinfo.mat']),'file') 
         mono_res = ce_MonoSynConvClick(spikes{spkExclu},'includeInhibitoryConnections',parameters.includeInhibitoryConnections,'sr',sr);
         if parameters.manualAdjustMonoSyn
             dispLog('Loading MonoSynaptic GUI for manual adjustment',basename)
             mono_res = gui_MonoSyn(mono_res);
         end
-        save(fullfile(basepath,[basename,'.mono_res',erase(parameters.saveAs,'cell_metrics'),'.cellinfo.mat']),'mono_res','-v7.3','-nocompression');
-    else
-        disp('  Loading previous detected MonoSynaptic connections')
-        load(fullfile(basepath,[basename,'.mono_res',erase(parameters.saveAs,'cell_metrics'),'.cellinfo.mat']),'mono_res');
-        if parameters.includeInhibitoryConnections && (~isfield(mono_res,'sig_con_inhibitory') || (isfield(mono_res,'sig_con_inhibitory') && isempty(mono_res.sig_con_inhibitory_all)))
-            disp('  Detecting MonoSynaptic inhibitory connections')
-            mono_res_old = mono_res;
-            mono_res = ce_MonoSynConvClick(spikes{spkExclu},'includeInhibitoryConnections',parameters.includeInhibitoryConnections,'sr',sr);
-            mono_res.sig_con_excitatory = mono_res_old.sig_con;
-            mono_res.sig_con = mono_res_old.sig_con;
-            if parameters.manualAdjustMonoSyn
-                dispLog('Loading MonoSynaptic GUI for manual adjustment',basename)
-                mono_res = gui_MonoSyn(mono_res);
-            end
-            save(fullfile(basepath,[basename,'.mono_res',erase(parameters.saveAs,'cell_metrics'),'.cellinfo.mat']),'mono_res','-v7.3','-nocompression');
-        elseif parameters.forceReload == true && parameters.manualAdjustMonoSyn
-            mono_res = gui_MonoSyn(mono_res);
-            save(fullfile(basepath,[basename,'.mono_res',erase(parameters.saveAs,'cell_metrics'),'.cellinfo.mat']),'mono_res','-v7.3','-nocompression');
-        end
-    end
+%         save(fullfile(basepath,[basename,'.mono_res',erase(parameters.saveAs,'cell_metrics'),'.cellinfo.mat']),'mono_res','-v7.3','-nocompression');
+%     else
+%         disp('  Loading previous detected MonoSynaptic connections')
+%         load(fullfile(basepath,[basename,'.mono_res',erase(parameters.saveAs,'cell_metrics'),'.cellinfo.mat']),'mono_res');
+%         if parameters.includeInhibitoryConnections && (~isfield(mono_res,'sig_con_inhibitory') || (isfield(mono_res,'sig_con_inhibitory') && isempty(mono_res.sig_con_inhibitory_all)))
+%             disp('  Detecting MonoSynaptic inhibitory connections')
+%             mono_res_old = mono_res;
+%             mono_res = ce_MonoSynConvClick(spikes{spkExclu},'includeInhibitoryConnections',parameters.includeInhibitoryConnections,'sr',sr);
+%             mono_res.sig_con_excitatory = mono_res_old.sig_con;
+%             mono_res.sig_con = mono_res_old.sig_con;
+%             if parameters.manualAdjustMonoSyn
+%                 dispLog('Loading MonoSynaptic GUI for manual adjustment',basename)
+%                 mono_res = gui_MonoSyn(mono_res);
+%             end
+%             save(fullfile(basepath,[basename,'.mono_res',erase(parameters.saveAs,'cell_metrics'),'.cellinfo.mat']),'mono_res','-v7.3','-nocompression');
+%         elseif parameters.forceReload == true && parameters.manualAdjustMonoSyn
+%             mono_res = gui_MonoSyn(mono_res);
+%             save(fullfile(basepath,[basename,'.mono_res',erase(parameters.saveAs,'cell_metrics'),'.cellinfo.mat']),'mono_res','-v7.3','-nocompression');
+%         end
+%     end
     
     field2remove = {'putativeConnections'};
     test = isfield(cell_metrics,field2remove);
@@ -838,16 +838,25 @@ if any(contains(parameters.metrics,{'monoSynaptic_connections','all'})) && ~any(
         disp('  Determining transmission probabilities')
         ccg2 = mono_res.ccgR;
         ccg2(isnan(ccg2)) =  0;
+        total_time = mono_res.ccgR_bins(end) - mono_res.ccgR_bins(1);
         
         % Excitatory connections
         for i = 1:size(cell_metrics.putativeConnections.excitatory,1)
-            [trans,prob,prob_uncor,pred] = ce_GetTransProb(ccg2(:,cell_metrics.putativeConnections.excitatory(i,1),cell_metrics.putativeConnections.excitatory(i,2)),  spikes{spkExclu}.total(cell_metrics.putativeConnections.excitatory(i,1)),  mono_res.binSize,  0.020);
+            [trans,~,~] = ce_GetTransProb(ccg2(:,cell_metrics.putativeConnections.excitatory(i,1),...
+                cell_metrics.putativeConnections.excitatory(i,2)),...
+                spikes{spkExclu}.total(cell_metrics.putativeConnections.excitatory(i,1)),...
+                spikes{spkExclu}.total(cell_metrics.putativeConnections.excitatory(i,2))/total_time,...
+                mono_res.binSize, 0.020);
             cell_metrics.putativeConnections.excitatoryTransProb(i) = trans;
         end
         
         % Inhibitory connections
         for i = 1:size(cell_metrics.putativeConnections.inhibitory,1)
-            [trans,prob,prob_uncor,pred] = ce_GetTransProb(ccg2(:,cell_metrics.putativeConnections.inhibitory(i,1),cell_metrics.putativeConnections.inhibitory(i,2)),  spikes{spkExclu}.total(cell_metrics.putativeConnections.inhibitory(i,1)),  mono_res.binSize,  0.020);
+            [trans,~,~] = ce_GetTransProb(ccg2(:,cell_metrics.putativeConnections.inhibitory(i,1),...
+                cell_metrics.putativeConnections.inhibitory(i,2)),...
+                spikes{spkExclu}.total(cell_metrics.putativeConnections.inhibitory(i,1)),...
+                spikes{spkExclu}.total(cell_metrics.putativeConnections.inhibitory(i,2))/total_time,...
+                mono_res.binSize, 0.020);
             cell_metrics.putativeConnections.inhibitoryTransProb(i) = trans;
         end
 
@@ -858,18 +867,30 @@ if any(contains(parameters.metrics,{'monoSynaptic_connections','all'})) && ~any(
             ccg2(isnan(ccg2)) =  0;
 
             for i = 1:size(cell_metrics.putativeConnections.excitatory,1)
-                exc_idx = cell_metrics.putativeConnections.excitatory(i,1);
-                st_bin_idx = spikes{spkExclu}.times{exc_idx}>mono_res.ccgR_bins(b) & spikes{spkExclu}.times{exc_idx}<=mono_res.ccgR_bins(b+1);
-                [trans,~,~,~] = ce_GetTransProb(ccg2(:,exc_idx,cell_metrics.putativeConnections.excitatory(i,2)),...
-                    length(spikes{spkExclu}.times{exc_idx}(st_bin_idx)),  mono_res.binSize,  0.020);
+                ref_idx = cell_metrics.putativeConnections.excitatory(i,1);
+                target_idx = cell_metrics.putativeConnections.excitatory(i,2);
+                ref_st_idx = spikes{spkExclu}.times{ref_idx}>mono_res.ccgR_bins(b) & spikes{spkExclu}.times{ref_idx}<=mono_res.ccgR_bins(b+1);
+                target_st_idx = spikes{spkExclu}.times{target_idx}>mono_res.ccgR_bins(b) & spikes{spkExclu}.times{target_idx}<=mono_res.ccgR_bins(b+1);
+                [trans,trans_fr_corr,trans_prior_corr] = ce_GetTransProb(ccg2(:,ref_idx,target_idx),...
+                    length(spikes{spkExclu}.times{ref_idx}(ref_st_idx)),...
+                    length(spikes{spkExclu}.times{target_idx}(target_st_idx))/10,...
+                    mono_res.binSize,  0.020);
                 cell_metrics.putativeConnections.excitatoryTransProb_binned(b,i) = trans;
+                cell_metrics.putativeConnections.excitatoryTransProbFRCorr_binned(b,i) = trans_fr_corr;
+                cell_metrics.putativeConnections.excitatoryTransProbPriorCorr_binned(b,i) = trans_prior_corr;
             end
             for i = 1:size(cell_metrics.putativeConnections.inhibitory,1)
-                inh_idx = cell_metrics.putativeConnections.inhibitory(i,1);
-                st_bin_idx = spikes{spkExclu}.times{inh_idx}>mono_res.ccgR_bins(b) & spikes{spkExclu}.times{inh_idx}<=mono_res.ccgR_bins(b+1);
-                [trans,~,~,~] = ce_GetTransProb(ccg2(:,inh_idx,cell_metrics.putativeConnections.inhibitory(i,2)),...
-                    length(spikes{spkExclu}.times{inh_idx}(st_bin_idx)),  mono_res.binSize,  0.020);
+                ref_idx = cell_metrics.putativeConnections.inhibitory(i,1);
+                target_idx = cell_metrics.putativeConnections.inhibitory(i,2);
+                ref_st_idx = spikes{spkExclu}.times{ref_idx}>mono_res.ccgR_bins(b) & spikes{spkExclu}.times{ref_idx}<=mono_res.ccgR_bins(b+1);
+                target_st_idx = spikes{spkExclu}.times{target_idx}>mono_res.ccgR_bins(b) & spikes{spkExclu}.times{target_idx}<=mono_res.ccgR_bins(b+1);
+                [trans,trans_fr_corr,trans_prior_corr] = ce_GetTransProb(ccg2(:,ref_idx,target_idx),...
+                    length(spikes{spkExclu}.times{ref_idx}(ref_st_idx)),...
+                    length(spikes{spkExclu}.times{target_idx}(target_st_idx))/10,...
+                    mono_res.binSize,  0.020);
                 cell_metrics.putativeConnections.inhibitoryTransProb_binned(b,i) = trans;
+                cell_metrics.putativeConnections.inhibitoryTransProbFRCorr_binned(b,i) = trans_fr_corr;
+                cell_metrics.putativeConnections.inhibitoryTransProbPriorCorr_binned(b,i) = trans_prior_corr;
             end
         end
     else
