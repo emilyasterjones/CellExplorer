@@ -16,20 +16,18 @@ for s = 1:height(sessions)
         ecephys_path = strcat(base_dir, '\Preprocessed_Data\Spikes\g1');
     
         rec_file_stem = split(string(sessions{s,'File'}),'/');
-        rec_file_stem = rec_file_stem(2);
-        rec_file_stem = convertStringsToChars(rec_file_stem);
-        rec_file_stem = rec_file_stem(1:end-3);
-        rec_file_path = sprintf('%s\\%s\\Ecephys\\%s\\catgt_%s_g%d\\%s_g%d_imec%d',...
+        rec_file_stem = convertStringsToChars(rec_file_stem(2));
+        rec_file_path = sprintf('%s\\%s\\Ecephys\\%s\\catgt_%s\\%s_imec%d',...
                                 ecephys_path, string(sessions{s,'Animal'}),...
-                                rec_file_stem, rec_file_stem, start_gate,...
-                                rec_file_stem, start_gate, probe);
+                                rec_file_stem(1:end-3), rec_file_stem,...
+                                rec_file_stem, probe);
         cd(rec_file_path)
         
         % set params
         tic
         session = sessionTemplate(rec_file_path);
         % pass the ap.bin file name (not the path)
-        session.extracellular.fileName = sprintf('%s_g%d_tcat.imec%d.ap.bin', rec_file_stem, start_gate, probe);
+        session.extracellular.fileName = sprintf('%s_tcat.imec%d.ap.bin', rec_file_stem, probe);
         
         % generate metrics file
 %         session.extracellular.srLfp = 2500; %only necessary if running LFP metrics
